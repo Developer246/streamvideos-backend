@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const { Innertube, UniversalCache } = require('youtubei.js');
+import express from 'express';
+import cors from 'cors';
+import { Innertube, UniversalCache } from 'youtubei.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,14 +9,12 @@ app.use(cors());
 
 let youtube;
 
-// Inicializar YouTube
 async function initYouTube() {
     try {
         youtube = await Innertube.create({
             cache: new UniversalCache(false),
             generate_session_locally: true
         });
-
         console.log("YouTube client initialized successfully.");
     } catch (error) {
         console.error("Error initializing YouTube client:", error);
@@ -25,18 +23,13 @@ async function initYouTube() {
 
 initYouTube();
 
-/* ============================================================
-   GET VIDEO INFO
-============================================================ */
 app.get('/api/video-info/:id', async (req, res) => {
     try {
         if (!youtube) {
             return res.status(503).json({ error: "Servicio de YouTube no disponible aún." });
         }
-
         const videoId = req.params.id;
         const info = await youtube.getInfo(videoId);
-
         const data = {
             id: videoId,
             title: info.basic_info.title,
@@ -46,33 +39,21 @@ app.get('/api/video-info/:id', async (req, res) => {
             description: info.basic_info.description,
             thumbnail: info.basic_info.thumbnail?.[0]?.url || null
         };
-
         res.json({ success: true, data });
-
     } catch (error) {
         console.error("Error fetching video info:", error);
-        res.status(500).json({
-            success: false,
-            error: "No se pudo obtener la información del video.",
-            details: error.message
-        });
+        res.status(500).json({ success: false, error: "No se pudo obtener la información del video.", details: error.message });
     }
 });
 
-/* ============================================================
-   SEARCH VIDEOS
-============================================================ */
 app.get('/api/search/:query', async (req, res) => {
     try {
         if (!youtube) {
             return res.status(503).json({ error: "Servicio de YouTube no disponible aún." });
         }
-
         const query = req.params.query;
         const searchResults = await youtube.search(query);
-
         const items = searchResults?.items || [];
-
         const videos = items
             .filter(item => item.type === 'Video')
             .map(video => ({
@@ -83,16 +64,10 @@ app.get('/api/search/:query', async (req, res) => {
                 thumbnail: video.thumbnails?.[0]?.url || null
             }))
             .slice(0, 10);
-
         res.json({ success: true, results: videos });
-
     } catch (error) {
         console.error("Error detallado en la búsqueda:", error);
-        res.status(500).json({
-            success: false,
-            error: "Error en la búsqueda.",
-            details: error.message
-        });
+        res.status(500).json({ success: false, error: "Error en la búsqueda.", details: error.message });
     }
 });
 
