@@ -71,11 +71,10 @@ app.get('/api/search/:query', async (req, res) => {
         const query = req.params.query;
         const searchResults = await youtube.search(query);
 
-        // Los resultados vienen en searchResults.items
         const items = searchResults?.items || [];
 
         const videos = items
-            .filter(item => item.type === 'Video') // Filtrar solo videos
+            .filter(item => item.type === 'Video')
             .map(video => ({
                 id: video.id,
                 title: video.title,
