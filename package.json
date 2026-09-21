@@ -1,24 +1,18 @@
 {
-  "name": "youtube-api-server",
+  "name": "backend-youtube-api",
   "version": "1.0.0",
-  "description": "Servidor Node.js para obtener información y buscar videos de YouTube usando youtubei.js",
-  "main": "index.js",
+  "description": "API backend para información y búsqueda de videos de YouTube",
+  "type": "module",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node server.js"
   },
-  "keywords": [
-    "youtube",
-    "api",
-    "nodejs",
-    "express",
-    "crawler"
-  ],
-  "author": "Tu nombre",
-  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "youtubei.js": "^10.0.0"
+    "express": "^4.19.2",
+    "youtubei.js": "^18.0.0"
   }
 }
