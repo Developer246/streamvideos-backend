@@ -71,39 +71,46 @@ app.get('/api/search/:query', async (req, res) => {
         const query = req.params.query;
         
         // Realizar la búsqueda
-        // Nota: 'search' puede devolver un objeto con resultados en diferentes propiedades
         const searchResults = await youtube.search(query);
 
-        // Ajuste para manejar la estructura de datos de youtubei.js
-        // Dependiendo de la versión, los resultados pueden estar en 'contents' o 'results'
-        let contents = [];
-        
-        if (searchResults && searchResults.contents) {
-            contents = searchResults.contents;
-        } else if (searchResults && searchResults.results) {
-            contents = searchResults.results;
-        } else {
-            throw new Error("Estructura de respuesta inesperada de YouTube.");
+        // LOG DE DEPURACIÓN: Imprime la estructura completa en la consola del servidor
+        // Esto nos ayuda a ver qué propiedades existen realmente
+        console.log("Estructura de búsqueda:", JSON.stringify(searchResults, null, 2));
+
+        // Intento 1: Buscar en 'results' (común en versiones recientes)
+        let items = searchResults.results;
+
+        // Intento 2: Si 'results' no existe o está vacío, buscar en 'contents'
+        if (!items || items.length === 0) {
+            items = searchResults.contents;
         }
 
-        // Mapear los resultados con manejo de errores por elemento
-        const results = contents
-            .filter(item => item && item.video) // Filtrar elementos inválidos
+        // Intento 3: Si sigue vacío, buscar dentro de 'contents[0].contents' (estructura anidada)
+        if (!items || items.length === 0) {
+            const firstContent = searchResults.contents && searchResults.contents[0];
+            if (firstContent && firstContent.contents) {
+                items = firstContent.contents;
+            }
+        }
+
+        if (!items || items.length === 0) {
+            return res.json({ success: true, results: [], message: "No se encontraron resultados. Verifica la estructura de la respuesta en la consola." });
+        }
+
+        // Mapear los resultados
+        const results = items
+            .filter(item => item && item.video) // Asegurar que el item tenga la propiedad video
             .map(item => {
                 const videoData = item.video;
                 return {
-                    id: videoData.id || "unknown",
-                    title: videoData.title || "Sin título",
-                    author: videoData.author || "Autor desconocido",
-                    thumbnail: videoData.thumbnails ? videoData.thumbnails[0].url : "https://via.placeholder.com/320x180?text=No+Thumbnail",
-                    duration: videoData.duration || "0:00"
+                    id: videoData.id,
+                    title: videoData.title,
+                    author: videoData.author,
+                    thumbnail: videoData.thumbnails ? videoData.thumbnails[0].url : null,
+                    duration: videoData.duration
                 };
             })
-            .slice(0, 10); // Limitar a los 10 primeros resultados
-
-        if (results.length === 0) {
-             return res.json({ success: true, results: [], message: "No se encontraron resultados." });
-        }
+            .slice(0, 10);
 
         res.json({ success: true, results });
 
@@ -112,7 +119,7 @@ app.get('/api/search/:query', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             error: "Error en la búsqueda.", 
-            details: error.message || "Error desconocido" 
+            details: error.message 
         });
     }
 });
