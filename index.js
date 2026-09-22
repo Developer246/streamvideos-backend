@@ -30,9 +30,11 @@ app.get('/api/video/:id', async (req, res) => {
     }
 
     const videoId = req.params.id;
+
+    // Descarga el stream (video+audio juntos)
     const stream = await youtube.download(videoId, {
-      type: 'video+audio', // también puedes usar 'video' o 'audio'
-      quality: 'best'      // o '720p', '1080p', etc.
+      type: 'video+audio',
+      quality: 'best'
     });
 
     // Configura headers para que el navegador lo interprete como video
@@ -42,7 +44,7 @@ app.get('/api/video/:id', async (req, res) => {
     stream.pipe(res);
 
   } catch (error) {
-    console.error("Error extrayendo video:", error);
+    console.error("❌ Error extrayendo video:", error);
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
