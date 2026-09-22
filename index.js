@@ -53,10 +53,9 @@ app.get("/api/search/:query", async (req, res) => {
       return res.json({ success: true, results: [] });
     }
 
-    // Inicializa el cliente de YouTube aquí
-    const yt = await getYT(); // tu función que devuelve el cliente de YouTube normal
+    // Inicializa el cliente de YouTube normal aquí
+    const yt = await getYT(); 
 
-    // Ejecuta la búsqueda
     const searchResults = await yt.search(q);
     const items = searchResults?.results || [];
 
@@ -73,13 +72,12 @@ app.get("/api/search/:query", async (req, res) => {
           id:        item.content_id || null,
           title:     meta?.title?.toString() || "Sin título",
           author:    texts[0] || null,
-          duration:  null, // aquí puedes extraer duración si tu cliente la provee
+          duration:  null, // si tu cliente provee duración, aquí la extraes
           thumbnail: item.content_image?.image?.[0]?.url || null,
         };
       })
       .slice(0, 10);
 
-    console.log(`✅ "${q}" → ${videos.length} videos`);
     res.json({ success: true, results: videos });
 
   } catch (error) {
@@ -87,7 +85,6 @@ app.get("/api/search/:query", async (req, res) => {
     res.status(500).json({ success: false, error: "Error en la búsqueda.", details: error.message });
   }
 });
-
 
 app.listen(PORT, () => {
     console.log(`Servidor backend escuchando en el puerto ${PORT}`);
