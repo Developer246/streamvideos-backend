@@ -26,7 +26,7 @@ initYouTube();
 app.get('/api/video/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
-    const url = `https://invidious.snopyta.org/api/v1/videos/${videoId}`;
+    const url = `yewtu.be/api/v1/videos/${videoId}`;
 
     const response = await fetch(url);
     const info = await response.json();
