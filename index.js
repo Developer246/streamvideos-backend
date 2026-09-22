@@ -30,39 +30,23 @@ app.get('/api/video/:id', async (req, res) => {
     }
 
     const videoId = req.params.id;
-    const info = await youtube.getInfo(videoId);
+    const stream = await youtube.download(videoId, {
+      type: 'video+audio', // también puedes usar 'video' o 'audio'
+      quality: 'best'      // o '720p', '1080p', etc.
+    });
 
-    // Streams disponibles
-    const formats = info.streaming_data?.formats || [];
-    const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
+    // Configura headers para que el navegador lo interprete como video
+    res.setHeader('Content-Type', 'video/mp4');
 
-    const data = {
-      id: videoId,
-      title: info.basic_info.title,
-      author: info.basic_info.author,
-      views: info.basic_info.view_count,
-      duration: info.basic_info.duration,
-      description: info.basic_info.description,
-      thumbnail: info.basic_info.thumbnail?.[0]?.url || null,
-      // URLs directas de los streams
-      formats: formats.map(f => ({
-        quality: f.quality_label,
-        mimeType: f.mime_type,
-        url: f.url
-      })),
-      adaptiveFormats: adaptiveFormats.map(f => ({
-        type: f.mime_type,
-        bitrate: f.bitrate,
-        url: f.url
-      }))
-    };
+    // Pipea el stream directamente al response
+    stream.pipe(res);
 
-    res.json({ success: true, data });
   } catch (error) {
     console.error("Error extrayendo video:", error);
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
+
 
 
 app.get("/api/search/:query", async (req, res) => {
