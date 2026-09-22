@@ -53,10 +53,11 @@ app.get("/api/search/:query", async (req, res) => {
       return res.json({ success: true, results: [] });
     }
 
-    // Inicializa el cliente de YouTube normal aquí
-    const yt = await getYT(); 
+    if (!youtube) {
+      return res.status(503).json({ error: "Servicio de YouTube no disponible aún." });
+    }
 
-    const searchResults = await yt.search(q);
+    const searchResults = await youtube.search(q);
     const items = searchResults?.results || [];
 
     const videos = items
@@ -85,6 +86,7 @@ app.get("/api/search/:query", async (req, res) => {
     res.status(500).json({ success: false, error: "Error en la búsqueda.", details: error.message });
   }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Servidor backend escuchando en el puerto ${PORT}`);
