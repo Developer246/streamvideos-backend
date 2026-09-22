@@ -30,24 +30,23 @@ app.get('/api/video/:id', async (req, res) => {
     }
 
     const videoId = req.params.id;
-
-    // Descarga el stream (video+audio juntos)
     const stream = await youtube.download(videoId, {
       type: 'video+audio',
       quality: 'best'
     });
 
-    // Configura headers para que el navegador lo interprete como video
     res.setHeader('Content-Type', 'video/mp4');
-
-    // Pipea el stream directamente al response
     stream.pipe(res);
 
   } catch (error) {
+    if (error.info?.error_type === 'LOGIN_REQUIRED') {
+      return res.status(403).json({ success: false, error: "El video requiere login, no disponible en modo anónimo." });
+    }
     console.error("❌ Error extrayendo video:", error);
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
+
 
 
 
