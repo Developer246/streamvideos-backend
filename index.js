@@ -57,26 +57,17 @@ app.get("/api/search/:query", async (req, res) => {
       return res.status(503).json({ error: "Servicio de YouTube no disponible aún." });
     }
 
-    const searchResults = await youtube.search(q);
+    const searchResults = await youtube.search(q, { type: "video" });
     const items = searchResults?.results || [];
 
     const videos = items
-      .filter(item => item.type === "LockupView" && item.content_type === "VIDEO")
-      .map(item => {
-        const meta = item.metadata;
-        const rows = meta?.metadata?.metadata_rows || [];
-        const texts = rows
-          .flatMap(row => (row.metadata_parts || []).map(part => part.text?.toString()))
-          .filter(Boolean);
-
-        return {
-          id:        item.content_id || null,
-          title:     meta?.title?.toString() || "Sin título",
-          author:    texts[0] || null,
-          duration:  null, // si tu cliente provee duración, aquí la extraes
-          thumbnail: item.content_image?.image?.[0]?.url || null,
-        };
-      })
+      .map(item => ({
+        id:        item.id || item.videoId || null,
+        title:     item.title?.text || item.title || "Sin título",
+        author:    item.author?.name || null,
+        duration:  item.duration?.text || null,
+        thumbnail: item.thumbnails?.[0]?.url || null,
+      }))
       .slice(0, 10);
 
     res.json({ success: true, results: videos });
