@@ -25,30 +25,37 @@ initYouTube();
 
 app.get('/api/video/:id', async (req, res) => {
   try {
-    if (!youtube) {
-      return res.status(503).json({ error: "Servicio de YouTube no disponible aún." });
-    }
-
     const videoId = req.params.id;
-    const stream = await youtube.download(videoId, {
-      type: 'video+audio',
-      quality: 'best'
-    });
+    const url = `https://invidious.snopyta.org/api/v1/videos/${videoId}`;
 
-    res.setHeader('Content-Type', 'video/mp4');
-    stream.pipe(res);
+    const response = await fetch(url);
+    const info = await response.json();
 
+    const data = {
+      id: videoId,
+      title: info.title,
+      author: info.author,
+      views: info.viewCount,
+      duration: info.lengthSeconds,
+      thumbnail: info.videoThumbnails?.[0]?.url || null,
+      videoStreams: info.videoStreams.map(v => ({
+        quality: v.qualityLabel,
+        mimeType: v.mimeType,
+        url: v.url
+      })),
+      audioStreams: info.audioStreams.map(a => ({
+        bitrate: a.bitrate,
+        mimeType: a.mimeType,
+        url: a.url
+      }))
+    };
+
+    res.json({ success: true, data });
   } catch (error) {
-    if (error.info?.error_type === 'LOGIN_REQUIRED') {
-      return res.status(403).json({ success: false, error: "El video requiere login, no disponible en modo anónimo." });
-    }
-    console.error("❌ Error extrayendo video:", error);
+    console.error("❌ Error con Invidious:", error);
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
-
-
-
 
 app.get("/api/search/:query", async (req, res) => {
   try {
