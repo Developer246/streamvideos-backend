@@ -24,16 +24,14 @@ async function initYouTube() {
 
 initYouTube();
 
-import YTDlpWrap from "yt-dlp-wrap";
-
-const ytDlpWrap = new YTDlpWrap(); // ✅ aquí sí funciona como constructor
+import { YTDlpWrap } from "yt-dlp-wrap";
 
 app.get('/api/video/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Ejecuta yt-dlp y devuelve la salida en JSON
+    const ytDlpWrap = new YTDlpWrap();
     const stdout = await ytDlpWrap.execPromise([url, "-j"]);
     const info = JSON.parse(stdout);
 
@@ -66,7 +64,6 @@ app.get('/api/video/:id', async (req, res) => {
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
-
 
 app.get("/api/search/:query", async (req, res) => {
   try {
