@@ -26,12 +26,14 @@ initYouTube();
 
 import YTDlpWrap from "yt-dlp-wrap";
 
+const ytDlpWrap = new YTDlpWrap(); // ✅ aquí sí funciona como constructor
+
 app.get('/api/video/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    const ytDlpWrap = new YTDlpWrap();
+    // Ejecuta yt-dlp y devuelve la salida en JSON
     const stdout = await ytDlpWrap.execPromise([url, "-j"]);
     const info = JSON.parse(stdout);
 
