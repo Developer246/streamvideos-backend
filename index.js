@@ -24,55 +24,47 @@ async function initYouTube() {
 
 initYouTube();
 
-// Nuevo endpoint usando yt-dlp
+import YTDlpWrap from "yt-dlp-wrap";
+
 app.get('/api/video/:id', async (req, res) => {
   try {
     const videoId = req.params.id;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    exec(`yt-dlp -j ${url}`, (error, stdout, stderr) => {
-      if (error) {
-        console.error("❌ Error ejecutando yt-dlp:", error);
-        return res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
-      }
+    const ytDlpWrap = new YTDlpWrap();
+    const stdout = await ytDlpWrap.execPromise([url, "-j"]);
+    const info = JSON.parse(stdout);
 
-      try {
-        const info = JSON.parse(stdout);
+    const data = {
+      id: videoId,
+      title: info.title,
+      author: info.uploader,
+      views: info.view_count,
+      duration: info.duration,
+      thumbnail: info.thumbnail,
+      videoStreams: info.formats
+        .filter(f => f.vcodec !== "none")
+        .map(v => ({
+          quality: v.format_note,
+          mimeType: v.ext,
+          url: v.url
+        })),
+      audioStreams: info.formats
+        .filter(f => f.acodec !== "none" && f.vcodec === "none")
+        .map(a => ({
+          bitrate: a.abr,
+          mimeType: a.ext,
+          url: a.url
+        }))
+    };
 
-        const data = {
-          id: videoId,
-          title: info.title,
-          author: info.uploader,
-          views: info.view_count,
-          duration: info.duration,
-          thumbnail: info.thumbnail,
-          videoStreams: info.formats
-            .filter(f => f.vcodec !== "none")
-            .map(v => ({
-              quality: v.format_note,
-              mimeType: v.ext,
-              url: v.url
-            })),
-          audioStreams: info.formats
-            .filter(f => f.acodec !== "none" && f.vcodec === "none")
-            .map(a => ({
-              bitrate: a.abr,
-              mimeType: a.ext,
-              url: a.url
-            }))
-        };
-
-        res.json({ success: true, data });
-      } catch (parseError) {
-        console.error("❌ Error parseando salida de yt-dlp:", parseError);
-        res.status(500).json({ success: false, error: "Error procesando datos de yt-dlp.", details: parseError.message });
-      }
-    });
+    res.json({ success: true, data });
   } catch (error) {
     console.error("❌ Error en /api/video:", error);
     res.status(500).json({ success: false, error: "No se pudo extraer el video.", details: error.message });
   }
 });
+
 
 app.get("/api/search/:query", async (req, res) => {
   try {
