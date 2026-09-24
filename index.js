@@ -3,7 +3,7 @@ import cors from "cors";
 import { Innertube, UniversalCache } from "youtubei.js";
 import pkg from "yt-dlp-wrap";
 
-const { YTDlpWrap } = pkg;
+const YTDlpWrap = pkg;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
