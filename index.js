@@ -33,7 +33,10 @@ app.get("/api/video/:id", async (req, res) => {
         .json({ success: false, error: "Servicio de YouTube no disponible aún." });
     }
 
-    const info = await youtube.getInfo(videoId);
+    // getBasicInfo solo llama al endpoint /player (streams + metadata básica).
+    // getInfo también llama a /next (relacionados, comentarios, etc.), que en
+    // muchos hosts (IPs de datacenter) YouTube bloquea con 403.
+    const info = await youtube.getBasicInfo(videoId);
 
     // Chequeo de disponibilidad (privado, borrado, con restricción de edad, etc.)
     const playability = info.playability_status;
