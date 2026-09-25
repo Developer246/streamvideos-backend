@@ -1,9 +1,6 @@
 import express from "express";
 import cors from "cors";
 import { Innertube, UniversalCache } from "youtubei.js";
-import pkg from "yt-dlp-wrap";
-
-const YTDlpWrap = pkg;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,33 +26,74 @@ initYouTube();
 app.get("/api/video/:id", async (req, res) => {
   try {
     const videoId = req.params.id;
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-    const ytDlpWrap = new YTDlpWrap();
-    const stdout = await ytDlpWrap.execPromise([url, "-j"]);
-    const info = JSON.parse(stdout);
+    if (!youtube) {
+      return res
+        .status(503)
+        .json({ success: false, error: "Servicio de YouTube no disponible aún." });
+    }
+
+    const info = await youtube.getInfo(videoId);
+
+    // Chequeo de disponibilidad (privado, borrado, con restricción de edad, etc.)
+    const playability = info.playability_status;
+    if (playability && playability.status !== "OK") {
+      return res.status(422).json({
+        success: false,
+        error: "El video no está disponible para reproducir.",
+        details: playability.reason || playability.status,
+      });
+    }
+
+    const basicInfo = info.basic_info;
+
+    const formats = info.streaming_data?.formats || [];
+    const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
+    const allFormats = [...formats, ...adaptiveFormats];
+
+    // decipher() resuelve la URL real de reproducción usando el player actual.
+    // Si alguna URL falla al decodificar, se descarta ese formato en vez de romper todo.
+    const buildStream = (f, extra) => {
+      try {
+        const url = f.decipher(youtube.session.player);
+        if (!url) return null;
+        return { url, mimeType: f.mime_type, itag: f.itag, ...extra };
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const videoStreams = allFormats
+      .filter((f) => f.has_video)
+      .map((v) =>
+        buildStream(v, {
+          quality: v.quality_label || v.quality || null,
+          fps: v.fps || null,
+        })
+      )
+      .filter(Boolean);
+
+    const audioStreams = allFormats
+      .filter((f) => f.has_audio && !f.has_video)
+      .map((a) =>
+        buildStream(a, {
+          bitrate: a.bitrate || a.average_bitrate || null,
+        })
+      )
+      .filter(Boolean);
 
     const data = {
       id: videoId,
-      title: info.title,
-      author: info.uploader,
-      views: info.view_count,
-      duration: info.duration,
-      thumbnail: info.thumbnail,
-      videoStreams: info.formats
-        .filter((f) => f.vcodec !== "none")
-        .map((v) => ({
-          quality: v.format_note,
-          mimeType: v.ext,
-          url: v.url,
-        })),
-      audioStreams: info.formats
-        .filter((f) => f.acodec !== "none" && f.vcodec === "none")
-        .map((a) => ({
-          bitrate: a.abr,
-          mimeType: a.ext,
-          url: a.url,
-        })),
+      title: basicInfo.title,
+      author: basicInfo.author,
+      views: basicInfo.view_count,
+      duration: basicInfo.duration,
+      thumbnail:
+        basicInfo.thumbnail?.[basicInfo.thumbnail.length - 1]?.url ||
+        basicInfo.thumbnail?.[0]?.url ||
+        null,
+      videoStreams,
+      audioStreams,
     };
 
     res.json({ success: true, data });
@@ -109,5 +147,3 @@ app.get("/api/search/:query", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en el puerto ${PORT}`);
 });
-
-
