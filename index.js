@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { Innertube, UniversalCache } from "youtubei.js";
+import { generate as generatePoToken } from "youtube-po-token-generator";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,19 +10,32 @@ app.use(cors());
 
 let youtube;
 
+// YouTube exige un PO Token (Proof of Origin) para aceptar peticiones desde
+// IPs de datacenter (Render, Railway, VPS, etc). Sin esto, /player y /next
+// responden 403 aunque el código esté bien. Lo generamos con jsdom (sin
+// necesitar un navegador real) y se lo pasamos a Innertube.
 async function initYouTube() {
   try {
+    const { visitorData, poToken } = await generatePoToken();
+
     youtube = await Innertube.create({
       cache: new UniversalCache(false),
       generate_session_locally: true,
+      visitor_data: visitorData,
+      po_token: poToken,
     });
-    console.log("YouTube client initialized successfully.");
+
+    console.log("YouTube client initialized successfully (con PO Token).");
   } catch (error) {
     console.error("Error initializing YouTube client:", error);
   }
 }
 
 initYouTube();
+
+// El PO Token expira; regeneramos el cliente cada 5 horas para no quedarnos
+// con una sesión muerta en producción.
+setInterval(initYouTube, 5 * 60 * 60 * 1000);
 
 app.get("/api/video/:id", async (req, res) => {
   try {
@@ -54,11 +68,13 @@ app.get("/api/video/:id", async (req, res) => {
     const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
     const allFormats = [...formats, ...adaptiveFormats];
 
-    // decipher() resuelve la URL real de reproducción usando el player actual.
-    // Si alguna URL falla al decodificar, se descarta ese formato en vez de romper todo.
-    const buildStream = (f, extra) => {
+    // decipher() resuelve la URL real de reproducción usando el player actual
+    // (en versiones recientes de youtubei.js es asíncrono, por eso el await).
+    // Si alguna URL falla al decodificar, se descarta ese formato en vez de
+    // romper toda la respuesta.
+    const buildStream = async (f, extra) => {
       try {
-        const url = f.decipher(youtube.session.player);
+        const url = await f.decipher(youtube.session.player);
         if (!url) return null;
         return { url, mimeType: f.mime_type, itag: f.itag, ...extra };
       } catch (e) {
@@ -66,24 +82,30 @@ app.get("/api/video/:id", async (req, res) => {
       }
     };
 
-    const videoStreams = allFormats
-      .filter((f) => f.has_video)
-      .map((v) =>
-        buildStream(v, {
-          quality: v.quality_label || v.quality || null,
-          fps: v.fps || null,
-        })
+    const videoStreams = (
+      await Promise.all(
+        allFormats
+          .filter((f) => f.has_video)
+          .map((v) =>
+            buildStream(v, {
+              quality: v.quality_label || v.quality || null,
+              fps: v.fps || null,
+            })
+          )
       )
-      .filter(Boolean);
+    ).filter(Boolean);
 
-    const audioStreams = allFormats
-      .filter((f) => f.has_audio && !f.has_video)
-      .map((a) =>
-        buildStream(a, {
-          bitrate: a.bitrate || a.average_bitrate || null,
-        })
+    const audioStreams = (
+      await Promise.all(
+        allFormats
+          .filter((f) => f.has_audio && !f.has_video)
+          .map((a) =>
+            buildStream(a, {
+              bitrate: a.bitrate || a.average_bitrate || null,
+            })
+          )
       )
-      .filter(Boolean);
+    ).filter(Boolean);
 
     const data = {
       id: videoId,
