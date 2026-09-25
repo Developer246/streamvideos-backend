@@ -1,23 +1,19 @@
 {
   "name": "youtube-backend",
   "version": "1.0.0",
-  "description": "Servidor backend para búsqueda y extracción de videos de YouTube usando youtubei.js y yt-dlp-wrap",
-  "main": "index.js",
+  "description": "Backend para búsqueda y extracción de streams de YouTube",
   "type": "module",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "youtubei.js": "^12.0.0",
-    "yt-dlp-wrap": "^2.3.12"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=18"
+    "youtube-po-token-generator": "^0.4.0",
+    "youtubei.js": "^16.0.0"
   }
 }
